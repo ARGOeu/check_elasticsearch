@@ -125,6 +125,10 @@ while test -n "$1"; do
             carbon_key=$2
             shift
             ;;
+        --timeout|-t)
+            timeout=$2
+            shift
+            ;;
         *)
         echo "Unknown argument: $1"
         print_help
@@ -145,7 +149,8 @@ fi
 
 get_status() {
     filename=$(mktemp -u -p "$output_dir" --suffix="-${PROGNAME}")
-    wget -q -t 3 -T 3 ${ca_cert} ${user} ${pass} $scheme://${hostname}:${port}/${status_page}?pretty=true -O ${filename}
+    wget -q -t 3 -T ${timeout}  ${ca_cert} ${user} ${pass} $scheme://${hostname}:${port}/${status_page}?pretty=true -O ${filename}
+
 }
 
 get_vals() {
