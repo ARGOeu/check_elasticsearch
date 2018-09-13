@@ -23,7 +23,7 @@ Nagios probes to check functionality of elasticsearch
 
 install -d %{buildroot}/%{_libexecdir}/argo-monitoring/probes/elasticsearch-check
 install -d %{buildroot}/%{_sysconfdir}/nagios/plugins/elasticsearch-check
-install -m 755 check_cas.pl %{buildroot}/%{_libexecdir}/argo-monitoring/probes/elasticsearch-check/check_elasticsearch
+install -m 755 check_elasticsearch %{buildroot}/%{_libexecdir}/argo-monitoring/probes/elasticsearch-check/check_elasticsearch
 
 %files
 %dir /%{_libexecdir}/argo-monitoring
