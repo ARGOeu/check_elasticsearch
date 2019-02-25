@@ -67,12 +67,17 @@ print_help() {
     echo "    Turns on authentication mode with default credentials."
     echo "  -c/--ca-certificate)"
     echo "    Uses the provided CA certificate."
+    echo "  -t/--time)"
+    echo "    time."
+    echo "  -e/--extrapath)"
+    echo "    the extrapath at the end of the domain name."
     exit $ST_UK
 }
 
+
 while test -n "$1"; do
     case "$1" in
-        -help|-h)
+  -help|-h)
             print_help
             exit $ST_UK
             ;;
@@ -85,7 +90,8 @@ while test -n "$1"; do
             shift
             ;;
         --secure|-s)
-            scheme=https
+            secure=$2
+            shift
             ;;
         --port|-P)
             port=$2
@@ -105,7 +111,7 @@ while test -n "$1"; do
             authentication="True"
             ;;
         --ca-certificate|-c)
-			ca_cert=$2
+                        ca_cert=$2
             use_ca="True"
             shift
             ;;
@@ -125,8 +131,12 @@ while test -n "$1"; do
             carbon_key=$2
             shift
             ;;
-        --timeout|-t)
-            timeout=$2
+        --time|-t)
+            time=$2
+            shift
+            ;;
+        --extrapath|-e)
+            extrapath=$2
             shift
             ;;
         *)
@@ -138,9 +148,18 @@ while test -n "$1"; do
     shift
 done
 
+if [ "$secure" = "on" ]; then
+   scheme=https
+fi
 if [ "$authentication" = "True" ]; then
     pass="--password=${pass}"
     user="--user=${user}"
+fi
+
+#if pass contains the word test
+if [[ $pass == *"test" ]]; then
+    pass=""
+    user=""
 fi
 
 if [ "$use_ca" = "True" ]; then
@@ -149,22 +168,21 @@ fi
 
 get_status() {
     filename=$(mktemp -u -p "$output_dir" --suffix="-${PROGNAME}")
-    wget -q -t 3 -T ${timeout}  ${ca_cert} ${user} ${pass} $scheme://${hostname}:${port}/${status_page}?pretty=true -O ${filename}
-
+    wget -q -t 3 -T 3 ${ca_cert} ${user} ${pass} $scheme://${hostname}:${port}/${extrapath}${status_page}?pretty=true -O ${filename}
 }
 
 get_vals() {
-    name=$(grep '\"cluster_name\" :' ${filename} | awk -F '"' '{print $4}')
-    status=$(grep '\"status\" :' ${filename} | awk -F '"' '{print $4}')
-    timed_out=`grep \"timed_out\" ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
-    number_nodes=`grep \"number_of_nodes\" ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
-    number_data_nodes=`grep \"number_of_data_nodes\" ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
-    active_primary_shards=`grep \"active_primary_shards\" ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
-    active_shards=`grep \"active_shards\" ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
-    relocating_shards=`grep \"relocating_shards\" ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
-    initializing_shards=`grep \"initializing_shards\" ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
-    delayed_unassigned_shards=`grep \"delayed_unassigned_shards\" ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
-    unassigned_shards=`grep -w '\"unassigned_shards\"' ${filename} | awk '{print $3}' | sed 's|[\r",]||g'`
+    name=$(cat ${filename}  | sed 's/.*"cluster_name":"\([^"]*\)".*/\1/g')
+    status=$(cat ${filename}  | sed 's/.*"status":"\([^"]*\)".*/\1/g')
+    timed_out=$(cat ${filename}  | sed 's/.*"timed_out":\([^"]*\),.*/\1/g')
+    number_of_nodes=$(cat ${filename}  | sed 's/.*"number_of_nodes":\([^"]*\),.*/\1/g')
+    number_of_data_nodes=$(cat ${filename}  |  sed 's/.*"number_of_data_nodes":\([^"]*\),.*/\1/g')
+    active_primary_shards=$(cat ${filename}  | sed 's/.*"active_primary_shards":\([^"]*\),.*/\1/g')
+    active_shards=$(cat ${filename}  | sed 's/.*"active_shards":\([^"]*\),.*/\1/g')
+    relocating_shards=$(cat ${filename}  | sed 's/.*"relocating_shards":\([^"]*\),.*/\1/g')
+    initializing_shards=$(cat ${filename}  | sed 's/.*"initializing_shards":\([^"]*\),.*/\1/g')
+    delayed_unassigned_shards=$(cat ${filename}  | sed 's/.*"delayed_unassigned_shards":\([^"]*\),.*/\1/g')
+    unassigned_shards=$(cat ${filename}  | sed 's/.*"unassigned_shards":\([^"]*\),.*/\1/g')
     rm -f ${filename}
 
     # Determine the Nagios Status and Exit Code
@@ -195,6 +213,7 @@ relocating_shards: $relocating_shards; \
 initializing_shards: $initializing_shards; \
 delayed_unassigned_shards: $delayed_unassigned_shards; \
 unassigned_shards: $unassigned_shards "
+#echo ${output}
 }
 
 do_perfdata() {
@@ -244,3 +263,4 @@ COMPARE=$listql
 
 echo "${NAGSTATUS} - ${output} | ${perfdata}"
 exit $EXST
+                                    
